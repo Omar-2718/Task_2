@@ -1,5 +1,8 @@
 #include <iostream>
 #include "assert.h"
+#include "map"
+#include "vector"
+#include "algorithm"
 using namespace std;
 
 struct Node{
@@ -143,10 +146,11 @@ public:
 };
 class LinkedList{
 private:
-    Node* head{};
     Node* tail{};
     int length =0;
 public:
+    Node* head{};
+
     ~LinkedList(){
         while (head){
             Node* curr = head->next;
@@ -214,6 +218,12 @@ public:
         cout << tempHead->data << " ";
         print2(tempHead->next);
     }
+    void embed_after(Node* node,int val){
+        Node* item = new Node(val);
+        length++;
+        node->next = item;
+        item->next = node->next;
+    }
     void insert_end(int val){
         length++;
         Node* t = new Node(val);
@@ -228,6 +238,33 @@ public:
         }
 
     }
+    void insert_end(Node *t){
+        length++;
+        if(head == nullptr && tail == nullptr) {
+            head = tail = t;
+            t->next = nullptr;
+        }
+        {
+            tail->next = t;
+            tail = t;
+            tail->next = nullptr;
+        }
+
+    }
+    void insert_sorted(int val){
+        if(!length || val <= head->data)
+            insert_front(val);
+        else if(tail->data <= val)
+            insert_end(val);
+        else{
+            for(Node *i = head, *prev = nullptr;i;prev = i,i=i->next){
+                if(val <= i->data){
+                    embed_after(prev,val);
+                    break;
+                }
+            }
+        }
+    }
     void insert_front(int val){
         length++;
         Node* t = new Node(val);
@@ -240,15 +277,6 @@ public:
         }
 
 
-    }
-    void delete_front(){
-        assert(length !=0);
-        if(length == 1)
-            tail = nullptr;
-        length--;
-        Node* t = head;
-        head = head->next;
-        delete t;
     }
     int search_improved(int t){
         int idx =0;
@@ -288,27 +316,129 @@ public:
         return ls.get_nth(c) == nullptr;
 
     }
-    void debug(){
-        if(length == 0) {
-            assert(head == nullptr);
-            assert(tail == nullptr);
-        }
-        else{
-            assert(head != nullptr);
-            assert(tail != nullptr);
-            if(length == 1){
-                assert(head == tail);
-            }
-            else{
-                assert(head != tail);
-            }
-            assert(!tail->next);
-        }
-        int len = 0;
-        for(Node* cur = head;cur;cur=cur->next,len++)
-            assert(len <10000);
-        assert(len == length);
+    void reverse(){
+        Node* h = head;
+        reverse(head, nullptr);
+        tail = h;
 
+    }
+    void reverse(Node* curr,Node* prev){
+        if(!curr) {
+            head = prev;
+            return;
+        }
+        reverse(curr->next,curr);
+        curr->next = prev;
+    }
+    void swap_pairs(){
+        Node* i = head;
+        while (i){
+            if(i->next == nullptr || i->next == tail)
+                break;
+            swap(i->data,i->next->data);
+            i = i->next->next;
+        }
+
+    }
+    void delete_node(Node *node){
+        if(node == head){
+            head=node->next;
+        }
+        length--;
+        delete node;
+    }
+    void delete_and_replace_node(Node *node,Node *prev){
+
+        if(node == head)
+            delete_first();
+        else if(node == tail)
+            delete_last();
+        else{
+
+            prev->next = node->next;
+            delete_node(node);
+        }
+    }
+    void delete_next_node(Node* node){
+        assert(node);
+        Node* to_delete = node->next;
+        bool is_tail = to_delete == tail;
+        node->next = node->next->next;
+        delete_node(to_delete);
+        if(is_tail)
+            tail = node;
+
+    }
+    void delete_even_position(){
+        assert(length > 1);
+        Node* prev = head;
+        for(Node* i = head->next;;){
+            Node* t = i;
+            prev->next = i->next;
+            tail = prev;
+            prev = i->next;
+            length--;
+            if(i->next != nullptr) {
+                i = i->next->next;
+                delete t;
+            }
+            else {
+                delete t;
+                break;
+
+            }
+
+
+        }
+    }
+    void delete_with_key(int key){
+        Node* prev = nullptr;
+        for(Node* i = head;i;i = i->next){
+            if(i == head && i-> data == key) {
+                delete_front();
+                return;
+            }
+            if(i == tail && i-> data == key) {
+                delete_last();
+                return;
+            }
+            if(i->data == key){
+                length--;
+                prev->next = i->next;
+                delete i;
+                return;
+            }
+            prev = i;
+
+        }
+    }
+    void delete_with_key_last(int key){
+        Node *prevT= nullptr,*prev = nullptr;
+        Node *to_delete = nullptr;
+        for(Node* i = head;i;i = i->next){
+
+            if(i->data == key) {
+                prev = prevT;
+                to_delete = i;
+            }
+
+            prevT = i;
+        }
+        if(prev)
+        delete_and_replace_node(to_delete,prev);
+
+    }
+
+    void delete_front(){
+        assert(length !=0);
+        if(length == 1)
+            tail = nullptr;
+        length--;
+        Node* t = head;
+        head = head->next;
+        if(!head)
+            tail = nullptr;
+        delete t;
     }
     void delete_first(){
         if(head){
@@ -349,7 +479,142 @@ public:
             length--;
         }
     }
+    void swap_head_and_tail(){
+        Node* afterFirst = head->next;
+        Node* before_last = get_nth(length-1);
+        tail->next = afterFirst;
+        before_last->next = head;
+        swap(tail,head);
+        tail->next = nullptr;
+    }
+    void left_rotate(int n){
+        for(int i =0;i< n % length;i++){
+        Node *t = head;
+        head = head->next;
+        tail->next = t;
+        tail = t;
+        tail->next = nullptr;
+        }
+    }
+    void remove_duplicates(){
+        map<int,int>mp;
+        remove_duplicates(head, nullptr,mp);
+    }
+    void remove_duplicates(Node *i,Node *prev,map<int,int>&mp)
+    {
+
+        if(!i)
+            return;
+        mp[i->data]++;
+        remove_duplicates(i->next,i,mp);
+        if(mp[i->data] > 1){
+            mp[i->data]--;
+            delete_and_replace_node(i,prev);
+
+        }
+
+    }
+    void move_to_back(int key){
+        Node *prev = nullptr;
+        int cnt = 0;
+        for(Node *i = head;i;i=i->next){
+
+            if(i != head && i->data == key){
+                delete_and_replace_node(i,prev);
+                cnt++;
+                i = prev;
+            }
+            else if(i == head && i->data == key){
+                delete_and_replace_node(i,prev);
+                cnt++;
+                i = head;
+            }
+            prev =i;
+            if(!i)
+                break;
+        }
+        while (cnt--){
+            if(tail) {
+                tail->next = new Node(key);
+                tail = tail->next;
+            } else{
+                tail = head = new Node(key);
+                tail->next = nullptr;
+            }
+        }
+        tail->next = nullptr;
+    }
+    void arrange_odd(){
+        Node *prev = head;
+        Node *i = head->next;
+        for(int cnt =0 ;cnt<length;cnt+=2){
+
+
+            //Node cp = *i;
+            if( i->next == nullptr)
+                break;
+            Node *t = i;
+            i = i->next->next;
+            insert_end(t->data);
+            Node* tP = prev;
+            prev = t->next;
+            delete_and_replace_node(t,tP);
+
+        }
+    }
+    int max(){
+        return max(head);
+    }
+    int max(Node *i){
+        if(!i)
+            return -1e9;
+
+        return std::max(max(i->next),i->data);
+    }
+
+    void debug(){
+        if(length == 0) {
+            assert(head == nullptr);
+            assert(tail == nullptr);
+        }
+        else{
+            assert(head != nullptr);
+            assert(tail != nullptr);
+            if(length == 1){
+                assert(head == tail);
+            }
+            else{
+                assert(head != tail);
+            }
+            assert(!tail->next);
+        }
+        int len = 0;
+        for(Node* cur = head;cur;cur=cur->next,len++)
+            assert(len <10000);
+        assert(len == length);
+
+    }
+
 };
+bool cmp(pair<int,Node*>a,pair<int,Node*>b){
+    return a.first < b.first;
+}
+Node* sortList(Node* head){
+    // Write your code here.
+    vector<pair<int,Node*>>arr;
+    for(Node *i = head;i;i=i->next){
+        arr.push_back({i->data,i});
+    }
+
+    sort(arr.begin(),arr.end(),cmp);
+    arr.push_back({-1,nullptr});
+
+    for(int i =0;i<arr.size()-1;i++){
+        arr[i].second->next = arr[i+1].second;
+    }
+    head = arr[0].second;
+    return head;
+}
 int main() {
 
 /*
@@ -409,13 +674,17 @@ int main() {
     cout << ls.get_nth_from_back(3)->data;
 
 */
-    LinkedList ls,ls1;
-    ls.insert_end(10);
-    ls1.insert_front(107);
-    ls.print2();
-    ls1.print2();
 
-    cout << ls.is_same2(ls1);
+    LinkedList ls;
+    ls.insert_end(1);
+    ls.insert_end(2);
+    ls.insert_end(3);
+    ls.insert_end(4);
+    ls.insert_end(5);
+    ls.insert_end(6);
+    ls.insert_end(7);
+    ls.left_rotate(2);
+    sortList(ls.head);
 
 
 
